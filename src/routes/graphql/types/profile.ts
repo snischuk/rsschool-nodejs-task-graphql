@@ -24,8 +24,8 @@ export const Profile = new GraphQLObjectType({
     },
     memberType: {
       type: new GraphQLNonNull(MemberType),
-      resolve: async (profile, _args, ctx, info) => {
-        let dl = ctx.dataLoaders.get(info.fieldNodes);
+      resolve: async (profile, _args, ctx, _info) => {
+        let dl = ctx.dataLoaders.dlMemberType;
         if (!dl) {
           dl = new DataLoader(async (ids: readonly String[]) => {
             const memberTypes = await ctx.prisma.memberType.findMany({
@@ -37,7 +37,7 @@ export const Profile = new GraphQLObjectType({
             });
             return ids.map((id) => memberTypes.find((memberType) => memberType.id == id));
           });
-          ctx.dataLoaders.set(info.fieldNodes, dl);
+          ctx.dataLoaders.dlMemberType = dl;
         }
         return await dl.load(profile.memberTypeId);
       },

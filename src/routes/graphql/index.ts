@@ -22,7 +22,7 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
       const errors = validate(schema, parse(query), [depthLimit(5)]);
       if (errors.length > 0) return { errors };
 
-      const dataLoaders = new WeakMap();
+      const dataLoaders = {};
 
       return await graphql({
         schema,
