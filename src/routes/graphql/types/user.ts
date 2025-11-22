@@ -1,5 +1,6 @@
 import {
   GraphQLFloat,
+  GraphQLInputObjectType,
   GraphQLList,
   GraphQLNonNull,
   GraphQLObjectType,
@@ -23,7 +24,7 @@ export const User = new GraphQLObjectType({
     },
     profile: {
       type: Profile,
-      resolve: async (user, _args, ctx) => {
+      resolve: async (user, args, ctx) => {
         return await ctx.profile.findUnique({
           where: {
             userId: user.id,
@@ -33,7 +34,7 @@ export const User = new GraphQLObjectType({
     },
     posts: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Post))),
-      resolve: async (user, _args, ctx) => {
+      resolve: async (user, args, ctx) => {
         return await ctx.post.findMany({
           where: {
             authorId: user.id,
@@ -43,7 +44,7 @@ export const User = new GraphQLObjectType({
     },
     userSubscribedTo: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(User))),
-      resolve: async (user, _args, ctx) => {
+      resolve: async (user, args, ctx) => {
         return await ctx.user.findMany({
           where: {
             subscribedToUser: {
@@ -57,7 +58,7 @@ export const User = new GraphQLObjectType({
     },
     subscribedToUser: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(User))),
-      resolve: async (user, _args, ctx) => {
+      resolve: async (user, args, ctx) => {
         return await ctx.user.findMany({
           where: {
             userSubscribedTo: {
@@ -69,5 +70,21 @@ export const User = new GraphQLObjectType({
         });
       },
     },
+  }),
+});
+
+export const CreateUserInput = new GraphQLInputObjectType({
+  name: 'CreateUserInput',
+  fields: () => ({
+    name: { type: new GraphQLNonNull(GraphQLString) },
+    balance: { type: new GraphQLNonNull(GraphQLFloat) },
+  }),
+});
+
+export const ChangeUserInput = new GraphQLInputObjectType({
+  name: 'ChangeUserInput',
+  fields: () => ({
+    name: { type: GraphQLString },
+    balance: { type: GraphQLFloat },
   }),
 });

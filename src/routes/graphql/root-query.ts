@@ -11,13 +11,13 @@ export const rootQuery = new GraphQLObjectType({
   fields: () => ({
     memberTypes: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(MemberType))),
-      resolve: async (_, args, ctx) => {
+      resolve: async (_, _args, ctx) => {
         return await ctx.memberType.findMany();
       },
     },
     memberType: {
       type: MemberType,
-      args: {
+      _: {
         id: {
           type: new GraphQLNonNull(MemberTypeId),
         },
@@ -32,7 +32,7 @@ export const rootQuery = new GraphQLObjectType({
     },
     users: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(User))),
-      resolve: async (_, args, ctx) => {
+      resolve: async (_, _args, ctx) => {
         return await ctx.user.findMany();
       },
     },
