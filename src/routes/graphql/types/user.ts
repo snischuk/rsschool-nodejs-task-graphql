@@ -9,6 +9,7 @@ import {
 import { UUIDType } from './uuid.js';
 import { Profile } from './profile.js';
 import { Post } from './post.js';
+import DataLoader from 'dataloader';
 
 export const User = new GraphQLObjectType({
   name: 'User',
@@ -24,50 +25,98 @@ export const User = new GraphQLObjectType({
     },
     profile: {
       type: Profile,
-      resolve: async (user, args, ctx) => {
-        return await ctx.profile.findUnique({
-          where: {
-            userId: user.id,
-          },
-        });
+      resolve: async (user, _args, ctx, info) => {
+        let dl = ctx.dataLoaders.get(info.fieldNodes);
+        if (!dl) {
+          dl = new DataLoader(async (ids: readonly String[]) => {
+            const profiles = await ctx.prisma.profile.findMany({
+              where: {
+                userId: {
+                  in: ids,
+                },
+              },
+            });
+            return ids.map((id) => profiles.find((profile) => profile.userId == id));
+          });
+          ctx.dataLoaders.set(info.fieldNodes, dl);
+        }
+        return await dl.load(user.id);
       },
     },
     posts: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Post))),
-      resolve: async (user, args, ctx) => {
-        return await ctx.post.findMany({
-          where: {
-            authorId: user.id,
-          },
-        });
+      resolve: async (user, _args, ctx, info) => {
+        let dl = ctx.dataLoaders.get(info.fieldNodes);
+        if (!dl) {
+          dl = new DataLoader(async (ids: readonly String[]) => {
+            const posts = await ctx.prisma.post.findMany({
+              where: {
+                authorId: {
+                  in: ids,
+                },
+              },
+            });
+            return ids.map((id) => posts.filter((post) => post.authorId == id));
+          });
+          ctx.dataLoaders.set(info.fieldNodes, dl);
+        }
+        return await dl.load(user.id);
       },
     },
     userSubscribedTo: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(User))),
-      resolve: async (user, args, ctx) => {
-        return await ctx.user.findMany({
-          where: {
-            subscribedToUser: {
-              some: {
-                subscriberId: user.id,
+      resolve: async (user, _args, ctx, info) => {
+        let dl = ctx.dataLoaders.get(info.fieldNodes);
+        if (!dl) {
+          dl = new DataLoader(async (ids: readonly String[]) => {
+            const users = await ctx.prisma.user.findMany({
+              where: {
+                subscribedToUser: {
+                  some: {
+                    subscriberId: { in: ids },
+                  },
+                },
               },
-            },
-          },
-        });
+              include: { subscribedToUser: true },
+            });
+            return ids.map((id) =>
+              users.filter((user) =>
+                user.subscribedToUser.some(
+                  (subscriber) => subscriber.subscriberId === id,
+                ),
+              ),
+            );
+          });
+          ctx.dataLoaders.set(info.fieldNodes, dl);
+        }
+        return await dl.load(user.id);
       },
     },
     subscribedToUser: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(User))),
-      resolve: async (user, args, ctx) => {
-        return await ctx.user.findMany({
-          where: {
-            userSubscribedTo: {
-              some: {
-                authorId: user.id,
+      resolve: async (user, _args, ctx, info) => {
+        let dl = ctx.dataLoaders.get(info.fieldNodes);
+        if (!dl) {
+          dl = new DataLoader(async (ids: readonly String[]) => {
+            const users = await ctx.prisma.user.findMany({
+              where: {
+                userSubscribedTo: {
+                  some: {
+                    authorId: { in: ids },
+                  },
+                },
               },
-            },
-          },
-        });
+              include: { userSubscribedTo: true },
+            });
+            return ids.map((id) =>
+              users.filter((user) =>
+                user.userSubscribedTo.some((author) => author.authorId === id),
+              ),
+            );
+          });
+          ctx.dataLoaders.set(info.fieldNodes, dl);
+        }
+        return await dl.load(user.id);
       },
     },
   }),

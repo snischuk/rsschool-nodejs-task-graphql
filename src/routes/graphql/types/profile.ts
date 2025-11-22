@@ -8,6 +8,7 @@ import {
 import { UUIDType } from './uuid.js';
 import { MemberType } from './member-type.js';
 import { MemberTypeId } from './member-type-id.js';
+import DataLoader from 'dataloader';
 
 export const Profile = new GraphQLObjectType({
   name: 'Profile',
@@ -23,12 +24,22 @@ export const Profile = new GraphQLObjectType({
     },
     memberType: {
       type: new GraphQLNonNull(MemberType),
-      resolve: async (profile, args, ctx) => {
-        return await ctx.memberType.findUnique({
-          where: {
-            id: profile.memberTypeId,
-          },
-        });
+      resolve: async (profile, _args, ctx, info) => {
+        let dl = ctx.dataLoaders.get(info.fieldNodes);
+        if (!dl) {
+          dl = new DataLoader(async (ids: readonly String[]) => {
+            const memberTypes = await ctx.prisma.memberType.findMany({
+              where: {
+                id: {
+                  in: ids,
+                },
+              },
+            });
+            return ids.map((id) => memberTypes.find((memberType) => memberType.id == id));
+          });
+          ctx.dataLoaders.set(info.fieldNodes, dl);
+        }
+        return await dl.load(profile.memberTypeId);
       },
     },
   }),
